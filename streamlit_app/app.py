@@ -1,12 +1,11 @@
 """
-app.py — Page d'accueil de l'application multipage
+app.py — Page d'accueil
 Classification de Radiographies Pulmonaires (COVID-19)
-Soutenance Ingénieur Machine Learning
 
 Lancer avec : streamlit run app.py
-Les autres sections sont dans le dossier pages/ (navigation automatique dans la sidebar).
+Les autres sections sont dans le dossier pages/.
 
-IMPORTANT — arborescence attendue à côté de ce fichier :
+arborescence attendue à côté de ce fichier :
   app.py
   common.py
   pages/
@@ -17,8 +16,7 @@ IMPORTANT — arborescence attendue à côté de ce fichier :
     5_🧠Deep_Learning.py
     6_🔥Interprétabilité_Grad-CAM.py
     7_✅Conclusion.py
-Si le dossier "pages" n'est pas au même niveau que app.py (ou mal nommé), Streamlit
-n'affichera aucune page dans la sidebar.
+
 """
 
 import streamlit as st
