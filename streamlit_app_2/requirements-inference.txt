@@ -1,0 +1,8 @@
+# Dépendances optionnelles uniquement pour la prédiction réelle.
+# L'application de présentation fonctionne avec requirements.txt.
+# Versions stables et compatibles avec Python 3.12
+tensorflow==2.19.0
+numpy==1.26.4
+opencv-python==4.11.0.86
+protobuf==5.29.5
+ml-dtypes==0.5.1
