@@ -1,4 +1,5 @@
 import streamlit as st
+from pathlib import Path
 from common import apply_global_style
 # ================= PAGE CONFIG =================
 
@@ -10,6 +11,7 @@ st.set_page_config(
 
 apply_global_style()
 
+BASE = Path(__file__).parent.parent
 # ================= CSS ============================
 
 st.markdown("""
@@ -113,9 +115,9 @@ col_left, col_center, col_right = st.columns([1, 3, 1])
 
 with col_center:
     st.image(
-        "images/class_distribution.png",
-        width=600
-    )
+    BASE / "images" / "class_distribution.png",
+    width=600
+)
 
 st.markdown("""
 <div class="comment-box">
@@ -137,10 +139,10 @@ col_left, col_center, col_right = st.columns([1, 4, 1])
 
 with col_center:
     st.image(
-        "images/gray_histogram.png",
-        width=750
+    BASE / "images" / "gray_histogram.png",
+    width=750
     )
-
+    
 st.markdown("""
 <div class="comment-box">
 Les distributions des niveaux de gris diffèrent légèrement entre les catégories,
@@ -174,7 +176,7 @@ with left_col:
 
     with img_col_center:
         st.image(
-            "images/mean_luminosity_boxplot.png",
+            BASE / "images" / "mean_luminosity_boxplot.png",
             width=500
         )
 
@@ -201,7 +203,7 @@ with right_col:
     """, unsafe_allow_html=True)
 
     st.image(
-        "images/outliers_scatter.png",
+        BASE / "images" / "outliers_scatter.png",
         use_container_width=True
     )
 
@@ -247,7 +249,7 @@ col1, col2, col3 = st.columns([1,5,1])
 
 with col2:
     st.image(
-        "images/outliers_bright_examples.png",
+        BASE / "images" / "outliers_bright_examples.png",
         use_container_width=True
     )
 
@@ -263,7 +265,7 @@ col1, col2, col3 = st.columns([1,5,1])
 
 with col2:
     st.image(
-        "images/outliers_dark_examples.png",
+        BASE / "images" / "outliers_dark_examples.png",
         use_container_width=True
     )
 

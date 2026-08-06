@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from PIL import Image
+from pathlib import Path
 from common import apply_global_style
 # ================= PAGE CONFIG =================
 
@@ -11,6 +12,7 @@ st.set_page_config(
 )
 
 apply_global_style()
+BASE = Path(__file__).parent.parent
 
 # ================= CSS =========================
 
@@ -169,7 +171,7 @@ col1, col2, col3 = st.columns([1, 1, 1])
 
 with col2:
     st.image(
-        "images/Original_vs_CLAHE.png",
+        BASE / "images" / "Original_vs_CLAHE.png",
         caption="Comparaison : Image originale vs CLAHE",
         width="stretch"
     )
@@ -195,7 +197,7 @@ col1, col2, col3 = st.columns([1, 3, 1])
 
 with col2:
     st.image(
-        "images/lung_segmentation_example.png",
+        BASE / "images" / "lung_segmentation_example.png",
         caption="Image originale – Masque pulmonaire – Image masquée",
         width="stretch"
     )

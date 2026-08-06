@@ -1,4 +1,5 @@
 import streamlit as st
+from pathlib import Path
 from common import apply_global_style
 
 # ================= PAGE CONFIG =================
@@ -9,6 +10,7 @@ st.set_page_config(
 )
 
 apply_global_style()
+BASE = Path(__file__).parent.parent
 
 # ================= CSS =================
 
@@ -76,7 +78,7 @@ col1, col2, col3, col4 = st.columns(4)
 
 # -------- COVID --------
 with col1:
-    st.image("images/COVID-1002.png",width=200)
+    st.image(BASE / "images" / "COVID-1002.png", width=200)
     st.markdown(
         """
         <div class="class-box"
@@ -89,7 +91,7 @@ with col1:
 
 # -------- Lung Opacity --------
 with col2:
-    st.image("images/Lung_Opacity-10.png", width=200)
+    st.image(BASE / "images" / "Lung_Opacity-10.png", width=200)
     st.markdown(
         """
         <div class="class-box"
@@ -102,7 +104,7 @@ with col2:
 
 # -------- Viral Pneumonia --------
 with col3:
-    st.image("images/Viral Pneumonia-1007.png",width=200)
+    st.image(BASE / "images" / "Viral Pneumonia-1007.png", width=200)
     st.markdown(
         """
         <div class="class-box"
@@ -115,7 +117,7 @@ with col3:
 
 # -------- Normal --------
 with col4:
-    st.image("images/Normal-10008.png",width=200)
+    st.image(BASE / "images" / "Normal-10008.png", width=200)
     st.markdown(
         """
         <div class="class-box"
