@@ -247,7 +247,7 @@ cards = [
     {
         "title": "Originale",
         "text": "Image redimensionnée et normalisée dans l'intervalle [0,1].",
-        "image": "images/original_image.png"
+        "image": BASE / "images" / "original_image.png"
     }
 ]
 
@@ -255,21 +255,21 @@ if show_clahe:
     cards.append({
         "title": "+ CLAHE",
         "text": "Amélioration locale du contraste.",
-        "image": "images/clahe_image.png"
+        "image": BASE / "images" / "clahe_image.png"
     })
 
 if show_mask:
     cards.append({
         "title": "+ Masque",
         "text": "Application du masque pulmonaire.",
-        "image": "images/masked_image.png"
+        "image": BASE / "images" / "masked_image.png"
     })
 
 if show_clahe_mask:
     cards.append({
         "title": "+ CLAHE+Masque",
         "text": "Masque pulmonaire après CLAHE.",
-        "image": "images/clahe_masked_image.png"
+        "image": BASE / "images" / "clahe_masked_image.png"
     })
 
 n_cards = len(cards)
