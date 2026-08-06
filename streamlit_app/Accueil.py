@@ -91,10 +91,6 @@ st.markdown(
 
 BASE = Path(__file__).parent
 
-st.write("BASE =", BASE)
-st.write("Images folder exists :", (BASE / "images").exists())
-st.write("Normal image exists :", (BASE / "images" / "Normal-10008.png").exists())
-
 # ================= IMAGE =================
 col1, col2, col3 = st.columns([2.3, 1.4, 2.3])
 
@@ -129,4 +125,4 @@ st.markdown(
 logo_col1, logo_col2, logo_col3 = st.columns([2.4, 1.2, 2.4])
 
 with logo_col2:
-    st.image("images/OIP.jpg", width=150,)
+    st.image(BASE / "images" / "OIP.jpg", width=150)
