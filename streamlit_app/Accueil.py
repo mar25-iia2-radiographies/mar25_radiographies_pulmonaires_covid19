@@ -1,4 +1,5 @@
 import streamlit as st
+from pathlib import Path
 from common import apply_global_style
 
 st.set_page_config(
@@ -88,15 +89,17 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+BASE = Path(__file__).parent
+
+st.write("BASE =", BASE)
+st.write("Images folder exists :", (BASE / "images").exists())
+st.write("Normal image exists :", (BASE / "images" / "Normal-10008.png").exists())
+
 # ================= IMAGE =================
 col1, col2, col3 = st.columns([2.3, 1.4, 2.3])
 
 with col2:
-    from pathlib import Path
-    st.write(Path.cwd())
-    st.write(list(Path.cwd().iterdir()))
-    st.write((Path("images") / "Normal-10008.png").exists())
-    st.image("images/Normal-10008.png")
+    st.image(BASE / "images" / "Normal-10008.png")
 
 # ================= AUTHORS =================
 st.markdown(
