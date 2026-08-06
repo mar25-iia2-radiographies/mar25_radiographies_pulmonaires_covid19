@@ -1,22 +1,95 @@
 """
-common.py — données, constantes et helpers partagés par toutes les pages
-de l'application "Classification de Radiographies Pulmonaires — COVID-19".
+common.py — éléments communs à toutes les pages de l'application.
 
-Toutes les valeurs numériques sont reprises du compte rendu final du projet.
+Ce fichier centralise deux types d'éléments :
+1. Les constantes et tableaux de résultats utilisés dans les pages.
+2. Les petites fonctions réutilisables pour éviter de répéter le même code.
+
+Objectif pédagogique : garder un code simple, lisible et facile à modifier.
 """
+
 
 import pandas as pd
 import streamlit as st
+from pathlib import Path
+import hashlib
+import numpy as np
+from PIL import Image
+
+# =========================
+# GLOBAL STYLE
+# =========================
+
+def apply_global_style():
+    st.markdown("""
+    <style>
+
+    /* ================= SIDEBAR ================= */
+
+    section[data-testid="stSidebar"] ul li div{
+        font-size:18px !important;
+        font-weight:500;
+    }
+
+    section[data-testid="stSidebar"] ul li{
+        margin-bottom:8px;
+    }
+
+    /* ================= PAGE ================= */
+
+    .block-container{
+        padding-top:2rem;
+        padding-bottom:2rem;
+    }
+
+    /* ================= TITLES ================= */
+
+    .main-title{
+        font-size:36px;
+        font-weight:700;
+        margin-bottom:20px;
+    }
+
+    .section-title{
+        font-size:24px;
+        font-weight:600;
+        margin-top:20px;
+        margin-bottom:10px;
+    }
+
+    /* ================= TEXT ================= */
+
+    .text{
+        font-size:20px;
+        line-height:1.6;
+    }
+
+    </style>
+    """, unsafe_allow_html=True)
 
 # --------------------------------------------------------------------------------------
-# Équipe / méta
+# Chemins du projet
 # --------------------------------------------------------------------------------------
-TEAM = ["Houssein Abbouchi", "Romuald Crochat", "Sareh Moghaddam", "Mathilde L'Hommelet"]
-PROJECT_TITLE = "Classification de Radiographies Pulmonaires"
-PROJECT_SUBTITLE = "Projet I.A. — Modélisation Machine Learning & Deep Learning"
-GITHUB_URL = "https://github.com/mar25-iia2-radiographies/mar25_radiographies_pulmonaires_covid19"
+# BASE_DIR correspond au dossier où se trouve common.py.
+BASE_DIR = Path(__file__).resolve().parent
 
+# Dossier où sont stockées les figures utilisées par les pages.
+IMAGE_DIR = BASE_DIR / "images"
+
+# Dossier où l'utilisateur peut déposer le modèle entraîné.
+MODEL_DIR = BASE_DIR / "models"
+
+# Nom du modèle attendu pour la démonstration externe.
+MODEL_FILENAME = "final_vgg16_fixed_splits.keras"
+
+# Taille d'entrée utilisée pour la démonstration externe.
+# Elle peut être modifiée si le modèle final a été entraîné avec une autre taille.
+MODEL_INPUT_SIZE = (224, 224)
+
+# Les 4 classes diagnostiques du dataset.
 CLASSES = ["COVID", "Lung_Opacity", "Normal", "Viral Pneumonia"]
+
+# Couleurs utilisées dans les graphiques.
 CLASS_COLORS = {
     "COVID": "#E4572E",
     "Lung_Opacity": "#F3A712",
@@ -24,14 +97,185 @@ CLASS_COLORS = {
     "Viral Pneumonia": "#3B6EA5",
 }
 
+def image_path(filename):
+    """
+    Retourne le chemin complet d'une image située dans le dossier images/.
 
-def page_header(icon: str, title: str, caption: str | None = None):
-    """Bandeau d'en-tête cohérent sur chaque page."""
-    st.title(f"{icon} {title}")
-    st.caption(f"{PROJECT_SUBTITLE} · " + " · ".join(TEAM))
-    if caption:
-        st.markdown(caption)
-    st.divider()
+    Exemple : image_path("vgg16_confusion_matrix.png")
+    renvoie le chemin complet vers images/vgg16_confusion_matrix.png.
+    """
+    return IMAGE_DIR / filename
+
+
+def show_image(filename, caption=None):
+    """
+    Affiche une image du dossier images/ si elle existe.
+
+    Si l'image est absente, l'application ne plante pas : elle affiche un message d'information.
+    C'est pratique pendant le développement, quand certaines figures ne sont pas encore copiées.
+    """
+    path = image_path(filename)
+    if path.exists():
+        st.image(str(path), caption=caption, use_container_width=True)
+    else:
+        st.info(f"Image non trouvée : images/{filename}")
+
+
+def default_model_path():
+    """
+    Retourne le chemin attendu du modèle Keras final.
+
+    Le fichier n'est pas inclus dans l'archive. Il faut le copier manuellement dans models/.
+    """
+    return MODEL_DIR / MODEL_FILENAME
+
+
+def model_status_message():
+    """
+    Vérifie si le modèle entraîné est présent dans le dossier models/.
+
+    Retour :
+    - True + message si le fichier existe.
+    - False + message si le fichier est absent.
+    """
+    path = default_model_path()
+    if path.exists():
+        return True, f"Modèle trouvé : {path}"
+    return False, f"Modèle absent. Placez le fichier ici : {path}"
+
+
+def input_fingerprint(image_bytes, apply_clahe=False):
+    """
+    Crée une signature courte de l'image chargée et de l'option CLAHE.
+
+    Cette signature permet de savoir si l'utilisateur a changé d'image.
+    Si l'image change, on efface l'ancienne prédiction affichée.
+    """
+    hasher = hashlib.sha256()
+    hasher.update(image_bytes)
+    hasher.update(str(apply_clahe).encode("utf-8"))
+    return hasher.hexdigest()
+
+
+def apply_simple_clahe(gray_array):
+    """
+    Applique CLAHE si OpenCV est installé.
+
+    Pour garder l'application simple, OpenCV n'est pas obligatoire dans requirements.txt.
+    Si OpenCV n'est pas installé, on renvoie l'image sans CLAHE.
+    """
+    try:
+        import cv2
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        return clahe.apply(gray_array)
+    except Exception:
+        return gray_array
+
+
+def preprocess_external_image(image, apply_clahe=False):
+    """
+    Prépare une radiographie externe avant prédiction.
+
+    Étapes simples :
+    1. conversion en niveaux de gris ;
+    2. option CLAHE ;
+    3. redimensionnement à MODEL_INPUT_SIZE ;
+    4. normalisation entre 0 et 1 ;
+    5. duplication sur 3 canaux pour VGG16.
+
+    Retour :
+    - batch : tableau prêt à être envoyé au modèle Keras ;
+    - stages : images intermédiaires à afficher dans Streamlit.
+    """
+    gray = image.convert("L")
+    gray_array = np.array(gray)
+
+    if apply_clahe:
+        processed_array = apply_simple_clahe(gray_array)
+    else:
+        processed_array = gray_array
+
+    processed = Image.fromarray(processed_array)
+    resized = processed.resize(MODEL_INPUT_SIZE)
+
+    # VGG16 attend généralement une image RGB : on duplique donc le niveau de gris en 3 canaux.
+    rgb = resized.convert("RGB")
+
+    # Normalisation simple [0, 1].
+    array = np.array(rgb).astype("float32") / 255.0
+
+    # Ajout de la dimension batch : (224, 224, 3) devient (1, 224, 224, 3).
+    batch = np.expand_dims(array, axis=0)
+
+    stages = {
+        "gray": gray,
+        "processed": processed,
+        "resized": resized,
+        "rgb": rgb,
+    }
+    return batch, stages
+
+
+# def load_keras_model(model_path):
+#     """
+#     Charge le modèle Keras sauvegardé.
+
+#     TensorFlow n'est importé qu'à l'intérieur de cette fonction pour que l'application
+#     de présentation puisse fonctionner même si TensorFlow n'est pas installé.
+#     """
+#     from tensorflow import keras
+#     return keras.models.load_model(model_path)
+
+@st.cache_resource(show_spinner=False)
+def load_keras_model(model_path):
+    """
+    Charge le modèle Keras utilisé par la page de démonstration.
+
+    Le modèle VGG16 contient une couche Lambda appelée
+    'vgg16_preprocess'. Cette couche utilise la fonction
+    preprocess_input de VGG16.
+
+    Lors du chargement, cette fonction doit être fournie
+    explicitement à Keras avec custom_objects.
+    """
+
+    # Import local :
+    # TensorFlow n'est importé que lorsque la page de prédiction
+    # a réellement besoin du modèle.
+    from tensorflow import keras
+
+    # Fonction utilisée dans la couche Lambda du modèle sauvegardé.
+    from tensorflow.keras.applications.vgg16 import preprocess_input
+
+    model = keras.models.load_model(
+        model_path,
+
+        # On indique à Keras quelle fonction correspond au nom
+        # "preprocess_input" enregistré dans le fichier .keras.
+        custom_objects={
+            "preprocess_input": preprocess_input,
+        },
+
+        # Pour une simple prédiction, il n'est pas nécessaire
+        # de restaurer l'optimizer, la loss et les métriques.
+        compile=False,
+
+        # Nécessaire pour certains modèles contenant une Lambda.
+        # À utiliser seulement parce que le modèle est le vôtre
+        # et provient d'une source de confiance.
+        safe_mode=False,
+    )
+
+    return model
+
+def predict_probabilities(model, batch):
+    """
+    Calcule les probabilités de chaque classe avec le modèle chargé.
+
+    Retour : dictionnaire du type {"COVID": 0.81, "Normal": 0.10, ...}.
+    """
+    predictions = model.predict(batch, verbose=0)[0]
+    return {label: float(prob) for label, prob in zip(CLASSES, predictions)}
 
 
 # --------------------------------------------------------------------------------------

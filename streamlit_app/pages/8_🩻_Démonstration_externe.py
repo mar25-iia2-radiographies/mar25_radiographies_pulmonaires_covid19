@@ -8,27 +8,19 @@ Important : la prédiction réelle fonctionne seulement si le modèle Keras entr
 est placé dans le dossier models/.
 """
 
-# pandas sert à construire le tableau des probabilités.
 import pandas as pd
-
-# plotly sert à afficher les probabilités sous forme de graphique simple.
 import plotly.express as px
-
-# streamlit sert à construire l'interface de la page.
 import streamlit as st
-
-# PIL permet de lire l'image chargée par l'utilisateur.
 from PIL import Image
 
-# Fonctions communes de l'application.
 from common import (
+    apply_global_style,
     CLASS_COLORS,
     CLASSES,
     default_model_path,
     input_fingerprint,
     load_keras_model,
     model_status_message,
-    page_header,
     predict_probabilities,
     preprocess_external_image,
 )
@@ -37,11 +29,25 @@ from common import (
 # Configuration de la page.
 st.set_page_config(page_title="Démonstration externe", page_icon="🩻", layout="wide")
 
-# En-tête homogène, comme les autres pages de la version enrichie 2.
-page_header(
-    "🩻",
-    "Démonstration externe",
-    "Tester une radiographie externe au dataset avec le modèle VGG16 retenu, si le fichier du modèle est disponible.",
+apply_global_style()
+
+st.markdown(
+    """
+    <div class="main-title">
+    🩻 Démonstration externe
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    """
+    <div class="text">
+    Tester une radiographie externe au dataset avec le modèle VGG16 retenu,
+    si le fichier du modèle est disponible.
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
 # Message de prudence indispensable pour une application médicale expérimentale.
@@ -130,12 +136,12 @@ st.subheader("2. Contrôle visuel du prétraitement")
 # On affiche les étapes principales pour que l'utilisateur voie ce que l'application fait.
 cols = st.columns(3)
 with cols[0]:
-    st.image(stages["gray"], caption="Image en niveaux de gris", use_container_width=True)
+    st.image(stages["gray"], caption="Image en niveaux de gris", width="stretch")
 with cols[1]:
     caption = "Après CLAHE" if apply_clahe else "Sans CLAHE"
-    st.image(stages["processed"], caption=caption, use_container_width=True)
+    st.image(stages["processed"], caption=caption, width="stretch")
 with cols[2]:
-    st.image(stages["resized"], caption="Entrée modèle redimensionnée", use_container_width=True)
+    st.image(stages["resized"], caption="Entrée modèle redimensionnée", width="stretch")
 
 st.divider()
 st.subheader("3. Prédiction du modèle")
@@ -155,7 +161,7 @@ if st.session_state.get("prediction_fingerprint") != fingerprint:
     st.session_state.pop("prediction_fingerprint", None)
 
 # Bouton de prédiction.
-if can_predict and st.button("Lancer la prédiction", type="primary", use_container_width=True):
+if can_predict and st.button("Lancer la prédiction", type="primary", width="stretch"):
     try:
         with st.spinner("Chargement du modèle et calcul de la prédiction..."):
             model = load_keras_model(str(default_model_path()))
@@ -202,7 +208,7 @@ if probabilities and st.session_state.get("prediction_fingerprint") == fingerpri
         )
         fig.update_traces(texttemplate="%{text:.1%}", textposition="outside")
         fig.update_layout(height=360, xaxis_range=[0, 1.05], showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 # Note finale pour cadrer l'usage.
 st.caption(

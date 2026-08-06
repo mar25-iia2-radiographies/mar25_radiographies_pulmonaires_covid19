@@ -6,17 +6,31 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from common import (
+    apply_global_style,
     DATASET_SPLIT,
     DL_BASELINE,
     DL_CNN_CM,
     DL_RESULTS,
     DL_VGG_CM,
     ROC_AUC,
-    page_header,
 )
 
-st.set_page_config(page_title="Deep Learning — Radiographies COVID-19", page_icon="🧠", layout="wide")
-page_header("🧠", "Modélisation par Deep Learning")
+st.set_page_config(
+    page_title="Deep Learning — Radiographies COVID-19",
+    page_icon="🧠",
+    layout="wide"
+)
+
+apply_global_style()
+
+st.markdown(
+    """
+    <div class="main-title">
+    🧠 Modélisation par Deep Learning
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown(
     """
@@ -34,7 +48,7 @@ col3.metric("Macro-F1 (F/F)", "0.880")
 col4.metric("Recall COVID (T/T)", "0.825", "meilleur de l'étude")
 
 st.subheader("Jeu de données — split fixe (80/20 stratifié + validation)")
-st.dataframe(DATASET_SPLIT, use_container_width=True, hide_index=True)
+st.dataframe(DATASET_SPLIT,  width="stretch", hide_index=True)
 
 with st.expander("Pipeline de prétraitement & gestion du déséquilibre"):
     st.markdown(
@@ -59,7 +73,7 @@ fig = go.Figure()
 fig.add_bar(name="Accuracy", x=DL_BASELINE["Modèle"], y=DL_BASELINE["Accuracy"], marker_color="#93c5fd")
 fig.add_bar(name="F1 COVID", x=DL_BASELINE["Modèle"], y=DL_BASELINE["F1 COVID"], marker_color="#E4572E")
 fig.update_layout(barmode="group", height=380, yaxis_range=[0, 1])
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig,  width="stretch")
 st.caption(
     "Le passage du réseau Dense (Flatten, aucune structure spatiale) au CNN personnalisé "
     "apporte +19 points d'accuracy et +36 points de F1 COVID — la préservation de "
@@ -69,7 +83,7 @@ st.caption(
 st.subheader("Résultats comparatifs complets — 5 architectures × 2 variantes (CLAHE/Augmentation)")
 st.dataframe(
     DL_RESULTS[["Modèle", "CLAHE", "Data Augmentation", "Accuracy", "Macro-F1", "F1-weighted", "Recall COVID", "F1 COVID"]],
-    use_container_width=True,
+     width="stretch",
     hide_index=True,
     column_config={
         "Accuracy": st.column_config.ProgressColumn("Accuracy", min_value=0.6, max_value=1, format="%.3f"),
@@ -87,7 +101,7 @@ with c1:
     fig.add_bar(name="Accuracy", x=DL_RESULTS["Variante"], y=DL_RESULTS["Accuracy"], marker_color="#93c5fd")
     fig.add_bar(name="Macro-F1", x=DL_RESULTS["Variante"], y=DL_RESULTS["Macro-F1"], marker_color="#1f77b4")
     fig.update_layout(barmode="group", xaxis_tickangle=-35, height=430, yaxis_range=[0.6, 0.95])
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig,  width="stretch")
 with c2:
     st.subheader("Compromis Recall COVID / Macro-F1")
     fig = px.scatter(
@@ -96,7 +110,7 @@ with c2:
     )
     fig.update_traces(textposition="top center", marker=dict(size=13))
     fig.update_layout(showlegend=True)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig,  width="stretch")
 st.caption(
     "VGG16 (F/F) offre le meilleur équilibre global ; VGG16 (T/T, CLAHE+Augmentation) obtient "
     "le meilleur recall COVID (0.825) de toute l'étude, au prix d'un léger recul du Macro-F1."
@@ -132,13 +146,13 @@ with cm1:
     fig = px.imshow(DL_CNN_CM, text_auto=True, color_continuous_scale="Blues",
                      labels=dict(x="Prédit", y="Réel", color="N"))
     fig.update_layout(height=380)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig,  width="stretch")
 with cm2:
     st.markdown("**VGG16 (F/F) — modèle final**")
     fig = px.imshow(DL_VGG_CM, text_auto=True, color_continuous_scale="Blues",
                      labels=dict(x="Prédit", y="Réel", color="N"))
     fig.update_layout(height=380)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig,  width="stretch")
 st.caption(
     "Erreur la plus critique : **COVID → Normal** (faux négatif). Erreur la plus fréquente : "
     "**COVID ↔ Lung_Opacity** (opacités pulmonaires visuellement proches). Viral Pneumonia "
@@ -150,7 +164,7 @@ fig = go.Figure()
 for model, color in [("CNN custom", "#1f77b4"), ("VGG16", "#E4572E")]:
     fig.add_bar(name=model, x=ROC_AUC["Classe"], y=ROC_AUC[model], marker_color=color)
 fig.update_layout(barmode="group", height=380, yaxis_range=[0.9, 1.0])
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig,  width="stretch")
 st.caption(
     "AUC COVID quasi identique entre les deux modèles (CNN custom = 0.9693 vs VGG16 = 0.9694). "
     "L'avantage de VGG16 ne vient donc pas d'un meilleur pouvoir discriminant intrinsèque, mais "

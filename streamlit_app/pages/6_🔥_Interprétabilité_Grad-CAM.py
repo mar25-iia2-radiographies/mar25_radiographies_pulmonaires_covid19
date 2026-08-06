@@ -10,16 +10,24 @@ pas de CSS personnalisé, et commentaires pour un niveau débutant.
 
 # streamlit permet de construire la page web.
 import streamlit as st
+from common import apply_global_style, show_image
 
-# Fonctions communes : en-tête de page et affichage d'images.
-from common import page_header, show_image
+st.set_page_config(
+    page_title="Grad-CAM — Radiographies COVID-19",
+    page_icon="🔥",
+    layout="wide"
+)
 
+apply_global_style()
 
-# Configuration de la page dans Streamlit.
-st.set_page_config(page_title="Grad-CAM — Radiographies COVID-19", page_icon="🔥", layout="wide")
-
-# En-tête commun à toutes les pages.
-page_header("🔥", "Interprétabilité des prédictions — Grad-CAM")
+st.markdown(
+    """
+    <div class="main-title">
+    🔥 Interprétabilité des prédictions — Grad-CAM
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 # Introduction courte : pourquoi l'interprétabilité est importante.
 st.markdown(

@@ -1,11 +1,21 @@
 """Page 7 — Conclusion générale (Sections 18-20 du compte rendu)."""
 
 import streamlit as st
+from common import apply_global_style
 
-from common import page_header
 
 st.set_page_config(page_title="Conclusion — Radiographies COVID-19", page_icon="✅", layout="wide")
-page_header("✅", "Conclusion générale")
+
+apply_global_style()
+
+st.markdown(
+    """
+    <div class="main-title">
+    ✅ Conclusion générale
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown(
     """
@@ -24,7 +34,15 @@ c2.metric("Meilleur Deep Learning", "VGG16", "F1-macro 0.880")
 c3.metric("Gain DL vs ML", "+13 pts", "F1-macro")
 c4.metric("AUC COVID (VGG16)", "0.969")
 
-st.subheader("Ce que montre le projet")
+st.markdown(
+    """
+    <div class="section-title">
+    📌 Ce que montre le projet
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.markdown(
     """
 - **La structure spatiale de l'image est déterminante.** Le passage des pixels aplatis / HOG (ML

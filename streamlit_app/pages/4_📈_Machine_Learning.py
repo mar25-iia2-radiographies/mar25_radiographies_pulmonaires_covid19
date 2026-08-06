@@ -1,13 +1,33 @@
 """Page 4 — Modélisation Machine Learning classique (Sections 6-10 du compte rendu)."""
 
+import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-import streamlit as st
 
-from common import ML_CONF_MATRIX, ML_COVID_RECALL_PRECISION, ML_F1_BY_CLASS, ML_RESULTS, CLASSES, page_header
+from common import (
+    ML_CONF_MATRIX,
+    ML_COVID_RECALL_PRECISION,
+    ML_F1_BY_CLASS,
+    ML_RESULTS,
+    apply_global_style,
+)
 
-st.set_page_config(page_title="Machine Learning — Radiographies COVID-19", page_icon="📈", layout="wide")
-page_header("📈", "Modélisation par Machine Learning classique")
+st.set_page_config(
+    page_title="Machine Learning — Radiographies COVID-19",
+    page_icon="📈",
+    layout="wide",
+)
+
+apply_global_style()
+
+st.markdown(
+    """
+    <div class="main-title">
+    📈 Modélisation par Machine Learning classique
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown(
     """
@@ -27,7 +47,7 @@ col3.metric("Classe la plus difficile", "COVID", "F1 entre 0.33 et 0.56")
 st.subheader("Tableau comparatif des modèles")
 st.dataframe(
     ML_RESULTS,
-    use_container_width=True,
+    width="stretch",
     hide_index=True,
     column_config={
         "Accuracy": st.column_config.ProgressColumn("Accuracy", min_value=0, max_value=1, format="%.2f"),
@@ -44,14 +64,14 @@ with c1:
     fig.add_bar(name="F1-macro", x=ML_RESULTS["Modèle"], y=ML_RESULTS["F1-macro"], marker_color="#1f77b4")
     fig.add_bar(name="Accuracy", x=ML_RESULTS["Modèle"], y=ML_RESULTS["Accuracy"], marker_color="#93c5fd")
     fig.update_layout(barmode="group", xaxis_tickangle=-35, yaxis_range=[0, 0.85], height=430)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 with c2:
     st.subheader("Recall vs Precision — classe COVID")
     fig = go.Figure()
     fig.add_bar(name="Recall COVID", x=ML_COVID_RECALL_PRECISION["Modèle"], y=ML_COVID_RECALL_PRECISION["Recall COVID"], marker_color="#E4572E")
     fig.add_bar(name="Precision COVID", x=ML_COVID_RECALL_PRECISION["Modèle"], y=ML_COVID_RECALL_PRECISION["Precision COVID"], marker_color="#f4a582")
     fig.update_layout(barmode="group", xaxis_tickangle=-35, yaxis_range=[0, 0.85], height=430)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 st.subheader("F1-score par classe et par modèle")
 fig = px.imshow(
@@ -62,7 +82,7 @@ fig = px.imshow(
     zmin=0.3, zmax=0.9,
 )
 fig.update_layout(height=420)
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 st.caption("La classe COVID reste systématiquement en retrait (F1 entre 0.33 et 0.56), loin derrière Normal et Viral Pneumonia.")
 
 st.subheader("Matrice de confusion — meilleur modèle ML (SVC/SVM + PCA, 128×128)")
@@ -75,7 +95,7 @@ with cm_col:
         labels=dict(x="Prédiction", y="Réalité", color="N"),
     )
     fig.update_layout(height=420)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 with txt_col:
     st.markdown(
         """
