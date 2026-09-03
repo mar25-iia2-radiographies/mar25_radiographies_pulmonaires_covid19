@@ -144,16 +144,41 @@ def model_status_message():
     return False, f"Modèle absent. Placez le fichier ici : {path}"
 
 
-def input_fingerprint(image_bytes, apply_clahe=False):
+def input_fingerprint(image_bytes, apply_clahe=False, apply_mask=False, mask_bytes=None, **kwargs):
     """
-    Crée une signature courte de l'image chargée et de l'option CLAHE.
+    Crée une signature courte des choix de l'utilisateur.
 
-    Cette signature permet de savoir si l'utilisateur a changé d'image.
-    Si l'image change, on efface l'ancienne prédiction affichée.
+    Pourquoi cette fonction est utile ?
+    Streamlit recharge la page à chaque action. Cette signature permet de savoir
+    si l'utilisateur a changé l'image, activé CLAHE ou ajouté un masque.
+
+    Si quelque chose change, on efface l'ancienne prédiction pour éviter
+    d'afficher un résultat qui ne correspond plus à l'image visible.
+
+    Paramètres :
+    - image_bytes : contenu de la radiographie chargée ;
+    - apply_clahe : True si CLAHE est demandé ;
+    - apply_mask : True si un masque pulmonaire est demandé ;
+    - mask_bytes : contenu du masque, si l'utilisateur en fournit un ;
+    - **kwargs : permet d'ignorer sans erreur d'éventuelles options futures.
+
+    Remarque débutant :
+    Le paramètre **kwargs rend la fonction plus robuste. Si une page Streamlit
+    envoie une option supplémentaire, l'application ne se bloque pas pour autant.
     """
     hasher = hashlib.sha256()
+
+    # Signature de la radiographie principale.
     hasher.update(image_bytes)
+
+    # Signature des options de prétraitement.
     hasher.update(str(apply_clahe).encode("utf-8"))
+    hasher.update(str(apply_mask).encode("utf-8"))
+
+    # Signature du masque si un fichier masque a été chargé.
+    if mask_bytes is not None:
+        hasher.update(mask_bytes)
+
     return hasher.hexdigest()
 
 
@@ -172,48 +197,95 @@ def apply_simple_clahe(gray_array):
         return gray_array
 
 
-def preprocess_external_image(image, apply_clahe=False):
+def preprocess_external_image(image, apply_clahe=False, apply_mask=False, mask_image=None, **kwargs):
     """
     Prépare une radiographie externe avant prédiction.
 
-    Étapes simples :
-    1. conversion en niveaux de gris ;
-    2. option CLAHE ;
-    3. redimensionnement à MODEL_INPUT_SIZE ;
-    4. normalisation entre 0 et 1 ;
-    5. duplication sur 3 canaux pour VGG16.
+    Cette fonction reste volontairement simple pour être facile à comprendre.
+    Elle reproduit les grandes étapes utilisées dans l'étude, mais en version
+    adaptée à une image externe chargée par l'utilisateur.
+
+    Étapes appliquées :
+    1. conversion de la radiographie en niveaux de gris ;
+    2. application optionnelle de CLAHE pour améliorer le contraste local ;
+    3. application optionnelle d'un masque pulmonaire si l'utilisateur en fournit un ;
+    4. redimensionnement à la taille attendue par le modèle ;
+    5. normalisation entre 0 et 1 ;
+    6. conversion en RGB, car VGG16 travaille avec 3 canaux.
+
+    Paramètres :
+    - image : radiographie chargée par l'utilisateur ;
+    - apply_clahe : True si l'utilisateur coche CLAHE ;
+    - apply_mask : True si l'utilisateur souhaite appliquer un masque ;
+    - mask_image : image du masque pulmonaire, si elle existe ;
+    - **kwargs : permet d'ignorer sans erreur d'éventuelles options futures.
 
     Retour :
-    - batch : tableau prêt à être envoyé au modèle Keras ;
-    - stages : images intermédiaires à afficher dans Streamlit.
+    - batch : tableau NumPy prêt pour model.predict() ;
+    - stages : dictionnaire contenant les images intermédiaires affichées dans Streamlit.
     """
+    # 1. Conversion de la radiographie en niveaux de gris.
     gray = image.convert("L")
     gray_array = np.array(gray)
 
+    # 2. Application optionnelle de CLAHE.
     if apply_clahe:
         processed_array = apply_simple_clahe(gray_array)
     else:
-        processed_array = gray_array
+        processed_array = gray_array.copy()
 
-    processed = Image.fromarray(processed_array)
-    resized = processed.resize(MODEL_INPUT_SIZE)
+    # Image intermédiaire après CLAHE ou sans CLAHE.
+    processed = Image.fromarray(processed_array.astype("uint8"))
 
-    # VGG16 attend généralement une image RGB : on duplique donc le niveau de gris en 3 canaux.
-    rgb = resized.convert("RGB")
-
-    # Normalisation simple [0, 1].
-    array = np.array(rgb).astype("float32") / 255.0
-
-    # Ajout de la dimension batch : (224, 224, 3) devient (1, 224, 224, 3).
-    batch = np.expand_dims(array, axis=0)
-
+    # On prépare un dictionnaire pour stocker toutes les étapes visibles.
     stages = {
         "gray": gray,
         "processed": processed,
-        "resized": resized,
-        "rgb": rgb,
     }
+
+    # 3. Application optionnelle du masque pulmonaire.
+    # Le masque doit être une image blanche/noire ou proche :
+    # - blanc = zone gardée ;
+    # - noir = zone supprimée.
+    if apply_mask and mask_image is not None:
+        mask_gray = mask_image.convert("L")
+
+        # Le masque doit avoir la même taille que la radiographie avant multiplication.
+        mask_gray = mask_gray.resize(gray.size)
+        mask_array = np.array(mask_gray)
+
+        # Création d'un masque binaire simple.
+        # Les pixels > 127 sont considérés comme appartenant aux poumons.
+        binary_mask = (mask_array > 127).astype("uint8")
+
+        # On garde les pixels pulmonaires et on met le reste en noir.
+        processed_array = processed_array * binary_mask
+
+        # Images intermédiaires affichables dans la page Streamlit.
+        stages["mask"] = mask_gray
+        stages["masked"] = Image.fromarray(processed_array.astype("uint8"))
+
+    # 4. Redimensionnement pour obtenir la taille attendue par le modèle.
+    final_image = Image.fromarray(processed_array.astype("uint8"))
+    resized = final_image.resize(MODEL_INPUT_SIZE)
+
+    # 5. VGG16 attend une image à 3 canaux.
+    # Comme la radiographie est en niveaux de gris, on duplique simplement le canal.
+    rgb = resized.convert("RGB")
+
+    # 6. Normalisation simple des pixels entre 0 et 1.
+    array = np.array(rgb).astype("float32") / 255.0
+
+    # 7. Ajout de la dimension batch.
+    # Exemple : (224, 224, 3) devient (1, 224, 224, 3).
+    batch = np.expand_dims(array, axis=0)
+
+    # Dernières étapes affichables.
+    stages["resized"] = resized
+    stages["rgb"] = rgb
+
     return batch, stages
+
 
 
 # def load_keras_model(model_path):

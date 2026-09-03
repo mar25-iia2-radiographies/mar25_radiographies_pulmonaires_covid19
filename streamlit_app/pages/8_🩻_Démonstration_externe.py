@@ -4,6 +4,9 @@ Page 8 — Démonstration externe.
 Objectif : charger une radiographie qui n'appartient pas au train, à la validation
 ou au test, puis appliquer le même type de prétraitement avant une prédiction.
 
+Modification demandée : ajouter la possibilité de charger aussi une image de masque
+pulmonaire si l'utilisateur en possède une.
+
 Important : la prédiction réelle fonctionne seulement si le modèle Keras entraîné
 est placé dans le dossier models/.
 """
@@ -16,7 +19,6 @@ from PIL import Image
 from common import (
     apply_global_style,
     CLASS_COLORS,
-    CLASSES,
     default_model_path,
     input_fingerprint,
     load_keras_model,
@@ -29,8 +31,10 @@ from common import (
 # Configuration de la page.
 st.set_page_config(page_title="Démonstration externe", page_icon="🩻", layout="wide")
 
+# Application du style commun de l'application.
 apply_global_style()
 
+# Titre principal.
 st.markdown(
     """
     <div class="main-title">
@@ -91,13 +95,20 @@ else:
 
 st.divider()
 
-# Zone de chargement de l'image et choix des options.
+# -----------------------------------------------------------------------------
+# 1. Chargement de la radiographie et options de prétraitement.
+# -----------------------------------------------------------------------------
 st.subheader("1. Charger une radiographie externe")
 
 col_upload, col_options = st.columns([1.3, 1])
+
 with col_upload:
-    # L'utilisateur charge une radiographie au format image classique.
-    uploaded_file = st.file_uploader("Radiographie externe", type=["png", "jpg", "jpeg"])
+    # Fichier principal : la radiographie à tester.
+    uploaded_file = st.file_uploader(
+        "Radiographie externe",
+        type=["png", "jpg", "jpeg"],
+        help="Image hors jeu d'entraînement, hors validation et hors test.",
+    )
 
 with col_options:
     # Option CLAHE : désactivée par défaut pour rester cohérent avec le VGG16 F/F retenu.
@@ -107,25 +118,68 @@ with col_options:
         help="À laisser désactivé pour la variante VGG16 principale sans CLAHE ni augmentation.",
     )
 
+    # Nouvelle option : l'utilisateur peut indiquer qu'il possède un masque pulmonaire.
+    has_mask = st.checkbox(
+        "J'ai un masque pulmonaire pour cette image",
+        value=False,
+        help="À cocher seulement si vous avez une image de masque associée à la radiographie.",
+    )
+
     # Confirmation pédagogique : l'image doit être externe au dataset d'étude.
     confirm_external = st.checkbox("Je confirme que cette image est externe au dataset.")
 
-# Si aucune image n'est chargée, on arrête la page ici.
+# Si l'utilisateur coche la case masque, on affiche un second chargeur de fichier.
+mask_file = None
+if has_mask:
+    st.markdown("**Masque pulmonaire associé**")
+    mask_file = st.file_uploader(
+        "Image de masque pulmonaire",
+        type=["png", "jpg", "jpeg"],
+        help="Le masque doit correspondre à la radiographie chargée. Blanc = poumons, noir = fond.",
+    )
+
+# Si aucune radiographie n'est chargée, on arrête la page ici.
 if uploaded_file is None:
     st.info("Charge une radiographie externe pour afficher le prétraitement et, si possible, la prédiction.")
     st.stop()
 
-# Lecture de l'image chargée.
+# Lecture de la radiographie chargée.
 try:
     image_bytes = uploaded_file.getvalue()
     image = Image.open(uploaded_file)
 except Exception as error:
-    st.error(f"Impossible de lire l'image : {error}")
+    st.error(f"Impossible de lire la radiographie : {error}")
     st.stop()
+
+# Lecture du masque si l'utilisateur en a fourni un.
+mask_bytes = None
+mask_image = None
+apply_mask = False
+
+if has_mask:
+    if mask_file is None:
+        # L'utilisateur a coché la case, mais n'a pas encore fourni le fichier masque.
+        st.warning(
+            "La case masque est cochée, mais aucune image de masque n'a été chargée. "
+            "Le prétraitement sera affiché sans masque pour le moment."
+        )
+    else:
+        try:
+            mask_bytes = mask_file.getvalue()
+            mask_image = Image.open(mask_file)
+            apply_mask = True
+        except Exception as error:
+            st.error(f"Impossible de lire le masque pulmonaire : {error}")
+            st.stop()
 
 # Application du prétraitement défini dans common.py.
 try:
-    batch, stages = preprocess_external_image(image, apply_clahe=apply_clahe)
+    batch, stages = preprocess_external_image(
+        image,
+        apply_clahe=apply_clahe,
+        apply_mask=apply_mask,
+        mask_image=mask_image,
+    )
 except Exception as error:
     st.error(f"Erreur pendant le prétraitement : {error}")
     st.stop()
@@ -134,14 +188,38 @@ st.divider()
 st.subheader("2. Contrôle visuel du prétraitement")
 
 # On affiche les étapes principales pour que l'utilisateur voie ce que l'application fait.
-cols = st.columns(3)
+# Si un masque est présent, on ajoute deux images : le masque et le résultat masqué.
+if apply_mask:
+    cols = st.columns(5)
+else:
+    cols = st.columns(3)
+
 with cols[0]:
     st.image(stages["gray"], caption="Image en niveaux de gris", width="stretch")
+
 with cols[1]:
     caption = "Après CLAHE" if apply_clahe else "Sans CLAHE"
     st.image(stages["processed"], caption=caption, width="stretch")
-with cols[2]:
-    st.image(stages["resized"], caption="Entrée modèle redimensionnée", width="stretch")
+
+if apply_mask:
+    with cols[2]:
+        st.image(stages["mask"], caption="Masque chargé", width="stretch")
+    with cols[3]:
+        st.image(stages["masked"], caption="Image après masque", width="stretch")
+    with cols[4]:
+        st.image(stages["resized"], caption="Entrée modèle", width="stretch")
+else:
+    with cols[2]:
+        st.image(stages["resized"], caption="Entrée modèle redimensionnée", width="stretch")
+
+# Petite explication selon le cas.
+if apply_mask:
+    st.info(
+        "Le masque a été appliqué avant le redimensionnement final. "
+        "Les zones noires du masque sont supprimées et les zones blanches sont conservées."
+    )
+else:
+    st.caption("Aucun masque n'est appliqué. La prédiction utilise seulement la radiographie prétraitée.")
 
 st.divider()
 st.subheader("3. Prédiction du modèle")
@@ -154,8 +232,15 @@ if not model_found:
 elif not confirm_external:
     st.info("Coche la case de confirmation pour lancer la prédiction réelle.")
 
-# Signature de l'image : permet d'effacer une ancienne prédiction si l'image change.
-fingerprint = input_fingerprint(image_bytes, apply_clahe=apply_clahe)
+# Signature de l'entrée : image + options + masque éventuel.
+# Cela évite d'afficher une ancienne prédiction si l'utilisateur change un fichier ou une option.
+fingerprint = input_fingerprint(
+    image_bytes,
+    apply_clahe=apply_clahe,
+    apply_mask=apply_mask,
+    mask_bytes=mask_bytes,
+)
+
 if st.session_state.get("prediction_fingerprint") != fingerprint:
     st.session_state.pop("prediction_probabilities", None)
     st.session_state.pop("prediction_fingerprint", None)
